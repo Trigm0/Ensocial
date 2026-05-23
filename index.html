@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Ensocial — AI-native marketing agency</title>
+  <meta name="description" content="Ensocial is an AI-native marketing agency delivering strategy, creative, build, and launch—fast. High-contrast, high-signal growth systems." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script>
+  /* Three.js EffectComposer + ShaderPass + RenderPass (inline since r128 CDN doesn't include post-processing) */
+  (function(){
+    THREE.Pass = function(){this.enabled=true;this.needsSwap=true;this.clear=false;this.renderToScreen=false};
+    THREE.Pass.prototype={setSize:function(){},render:function(){console.error('THREE.Pass: .render() must be implemented')}};
+    THREE.Pass.FullScreenQuad=function(m){this._mesh=new THREE.Mesh(new THREE.PlaneGeometry(2,2),m)};
+    THREE.Pass.FullScreenQuad.prototype={dispose:function(){this._mesh.geometry.dispose()},render:function(r){r.render(this._mesh,new THREE.OrthographicCamera(-1,1,1,-1,0,1))},get material(){return this._mesh.material},set material(v){this._mesh.material=v}};
+
+    THREE.ShaderPass=function(shader,textureID){
+      THREE.Pass.call(this);
+      this.textureID=textureID!==undefined?textureID:'tDiffuse';
+      if(shader){
+        this.uniforms=THREE.UniformsUtils.clone(shader.uniforms);
+        this.material=new THREE.ShaderMaterial({defines:Object.assign({},shader.defines||{}),uniforms:this.uniforms,vertexShader:shader.vertexShader,fragmentShader:shader.fragmentShader});
+      }
+      this.fsQuad=new THREE.Pass.FullScreenQuad(this.material);
+    };
+    THREE.ShaderPass.prototype=Object.assign(Object.create(THREE.Pass.prototype),{
+      constructor:THREE.ShaderPass,
+      render:function(renderer,writeBuffer,readBuffer){
+        if(this.uniforms[this.textureID])this.uniforms[this.textureID].value=readBuffer.texture;
+        if(this.renderToScreen){renderer.setRenderTarget(null);this.fsQuad.render(renderer)}
+        else{renderer.setRenderTarget(writeBuffer);if(this.clear)renderer.clear();this.fsQuad.render(renderer)}
+      }
+    });
+
+    THREE.RenderPass=function(scene,camera,overrideMaterial,clearColor,clearAlpha){
+      THREE.Pass.call(this);this.scene=scene;this.camera=camera;this.overrideMaterial=overrideMaterial;
+      this.clearColor=clearColor;this.clearAlpha=clearAlpha!==undefined?clearAlpha:0;this.clear=true;this.clearDepth=false;this.needsSwap=false;
+    };
+    THREE.RenderPass.prototype=Object.assign(Object.create(THREE.Pass.prototype),{
+      constructor:THREE.RenderPass,
+      render:function(renderer,writeBuffer,readBuffer){
+        renderer.setRenderTarget(readBuffer);
+        if(this.clear)renderer.clear();
+        renderer.render(this.scene,this.camera);
+      }
+    });
+
+    THREE.EffectComposer=function(renderer,renderTarget){
+      this.renderer=renderer;
+      var size=renderer.getSize(new THREE.Vector2());
+      this._pixelRatio=renderer.getPixelRatio();
+      if(renderTarget===undefined){
+        renderTarget=new THREE.WebGLRenderTarget(size.width*this._pixelRatio,size.height*this._pixelRatio);
+        renderTarget.texture.name='EffectComposer.rt1';
+      }
+      this.renderTarget1=renderTarget;
+      this.renderTarget2=renderTarget.clone();this.renderTarget2.texture.name='EffectComposer.rt2';
+      this.writeBuffer=this.renderTarget1;this.readBuffer=this.renderTarget2;
+      this.renderToScreen=true;this.passes=[];
+    };
+    THREE.EffectComposer.prototype={
+      setSize:function(w,h){
+        this.renderTarget1.setSize(w,h);this.renderTarget2.setSize(w,h);
+        for(var i=0;i<this.passes.length;i++)this.passes[i].setSize(w,h);
+      },
+      addPass:function(pass){
+        this.passes.push(pass);
+        var size=this.renderer.getSize(new THREE.Vector2());
+        pass.setSize(size.width*this._pixelRatio,size.height*this._pixelRatio);
+      },
+      render:function(){
+        var maskActive=false;
+        for(var i=0,l=this.passes.length;i<l;i++){
+          var pass=this.passes[i];
+          if(pass.enabled===false)continue;
+          pass.renderToScreen=(this.renderToScreen&&i===l-1);
+          pass.render(this.renderer,this.writeBuffer,this.readBuffer);
+          if(pass.needsSwap){var tmp=this.readBuffer;this.readBuffer=this.writeBuffer;this.writeBuffer=tmp}
+        }
+      }
+    };
+  })();
+  </script>
+</head>
+
+<body>
+  <svg class="svg-filters" aria-hidden="true" style="position:absolute;width:0;height:0;">
+    <defs>
+      <filter id="cloth-warp">
+        <feTurbulence id="cloth-turb" type="turbulence" baseFrequency="0.015 0.025" numOctaves="3" seed="2" result="noise"/>
+        <feDisplacementMap id="cloth-disp" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
+  <div class="gridlines" id="mesh-gradient" aria-hidden="true"></div>
+  <div class="shooting-star" id="shooting-star" aria-hidden="true"></div>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" data-header>
+    <div class="container header-inner">
+      <a class="brand" href="#top" aria-label="Ensocial home">
+        <img class="brand-logo" src="./images/Ensocial logo(Trans).svg" alt="" width="42" height="42" />
+        <span class="brand-text">
+          <span class="brand-name">Ensocial</span>
+          <span class="brand-tag">AI-native marketing</span>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-controls="primary-nav" aria-expanded="false">
+        <span class="sr-only">Open menu</span>
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+
+      <nav id="primary-nav" class="nav" aria-label="Primary">
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#how">How we work</a></li>
+          <li><a class="nav-link" href="#services">Services</a></li>
+          <li><a class="nav-link" href="#work">Portfolio</a></li>
+          <li><a class="nav-link" href="#pricing">Offer</a></li>
+          <li><a class="nav-link" href="#contact">Contact</a></li>
+        </ul>
+        <div class="nav-cta">
+          <a class="btn btn-primary" href="#contact">Book a consult</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section id="top" class="section hero">
+      <div class="hero-bg" aria-hidden="true">
+        <div class="vignette"></div>
+      </div>
+
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="pill">AI‑native</span>
+            <span class="pill pill--soft">Lead funnel systems</span>
+            <span class="pill pill--soft">Outcomes first</span>
+          </p>
+
+          <h1 class="hero-title">
+            Marketing that turns lead funnels into
+            <span class="serif-accent"><span class="word-flip-wrap"><span class="wf-word">better buyers</span><span class="wf-word">qualified leads</span><span class="wf-word">site visits</span><span class="wf-word">real conversions</span></span></span>, qualified site visits, and scalable growth.
+          </h1>
+
+          <p class="hero-lead">
+            Ensocial builds AI-powered lead funnel systems for real estate brands that want more than just inquiries. We combine performance marketing, landing pages, WhatsApp automation, and lead qualification into one streamlined conversion engine designed to reduce lead leakage and improve buyer quality at every stage of the funnel.
+          </p>
+          <p class="hero-lead">
+            From first click to booked site visit, every interaction is built for faster follow-ups, sharper targeting, and measurable growth.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#contact">Book a funnel audit</a>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- HOW WE WORK -->
+    <section id="how" class="section section-elevated">
+      <div class="container">
+        <header class="section-head center">
+          <p class="eyebrow"><span class="pill">How we work</span></p>
+          <h2 class="h2">A lead system engineered for conversion.</h2>
+          <p class="lead">From first click to closed deal — every step is designed to capture, qualify, and convert.</p>
+        </header>
+
+        <div class="timeline" id="timeline">
+          <div class="timeline-track" aria-hidden="true">
+            <div class="timeline-progress"></div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">Design the landing page</h3>
+              <div class="timeline-tags">
+                <span class="tag">Conversion</span>
+                <span class="tag tag--dim">UX</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">We build high-converting landing pages optimized for maximum lead capture — every element earns its place.</p>
+              <ul class="timeline-artifacts">
+                <li>Conversion-focused wireframe + copy</li>
+                <li>A/B test variants for CTAs and forms</li>
+                <li>Tracking pixels + analytics setup</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">Chatbot connect</h3>
+              <div class="timeline-tags">
+                <span class="tag">Engagement</span>
+                <span class="tag tag--dim">Qualification</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">The moment a lead lands, our intelligent chatbot initiates the conversation — instant response, zero wait time.</p>
+              <ul class="timeline-artifacts">
+                <li>Automated first-touch engagement</li>
+                <li>Intent capture + initial qualification</li>
+                <li>Seamless handoff to next stage</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">Profile the lead</h3>
+              <div class="timeline-tags">
+                <span class="tag">Data</span>
+                <span class="tag tag--dim">Enrichment</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">We enrich every lead with behavioral and contextual data to understand who they are and what they need.</p>
+              <ul class="timeline-artifacts">
+                <li>Behavioral scoring + interest mapping</li>
+                <li>Demographic and firmographic enrichment</li>
+                <li>Lead temperature classification</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">Build the persona</h3>
+              <div class="timeline-tags">
+                <span class="tag">Intelligence</span>
+                <span class="tag tag--dim">Segmentation</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">Each lead gets a dynamic persona — mapped to pain points, buying stage, and decision-making patterns.</p>
+              <ul class="timeline-artifacts">
+                <li>Buyer persona generation</li>
+                <li>Purchase intent + urgency signals</li>
+                <li>Personalized nurture path assignment</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">Smart calling</h3>
+              <div class="timeline-tags">
+                <span class="tag">Outreach</span>
+                <span class="tag tag--dim">Conversion</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">Intelligent voice outreach at the right moment — when the lead is warm and the data says they're ready to talk.</p>
+              <ul class="timeline-artifacts">
+                <li>Automated call scheduling + scripts</li>
+                <li>Real-time objection handling support</li>
+                <li>Call analytics + conversion tracking</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="timeline-item" data-timeline-item>
+            <div class="timeline-left">
+              <h3 class="timeline-title">CRM + closure</h3>
+              <div class="timeline-tags">
+                <span class="tag">Pipeline</span>
+                <span class="tag tag--dim">Analytics</span>
+              </div>
+            </div>
+            <div class="timeline-centre">
+              <div class="timeline-dot"></div>
+            </div>
+            <div class="timeline-right">
+              <p class="timeline-text">Qualified leads push directly into your CRM — tagged, scored, and ready for site visits or deal closure.</p>
+              <ul class="timeline-artifacts">
+                <li>CRM sync + pipeline stage mapping</li>
+                <li>Site visit scheduling + reminders</li>
+                <li>Full-funnel attribution dashboard</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section id="services" class="section section-elevated">
+      <div class="container">
+        <header class="section-head center">
+          <p class="eyebrow"><span class="pill">Services</span></p>
+          <h2 class="h2">Your lead pipeline, end to end.</h2>
+          <p class="lead">Every layer of the system — from the first ad impression to a signed deal — built and managed under one roof.</p>
+        </header>
+
+        <div class="card-stack" role="list">
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">01</span>
+                <h3 class="h3">Landing page design</h3>
+                <p class="card-desc">We build high-converting landing pages engineered for one thing: capturing leads. Every headline, form field, and CTA is tested and optimized to turn traffic into real enquiries.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>Conversion-focused UX + copy</li>
+                    <li>A/B tested CTAs and forms</li>
+                    <li>Full tracking + analytics setup</li>
+                    <li>Mobile-first responsive design</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">3.2×</span>
+                    <span class="card-stat-label">Avg. conversion lift vs. generic templates</span>
+                  </div>
+                </div>
+                <a class="link" href="#contact">Learn more <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">02</span>
+                <h3 class="h3">Chatbot engagement</h3>
+                <p class="card-desc">The moment a lead lands, our WhatsApp and web chatbots initiate the conversation — instant response, zero wait time. Leads are greeted, qualified, and routed before your team even sees them.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>Automated greeting + qualification</li>
+                    <li>Intent capture in real time</li>
+                    <li>Seamless handoff to next stage</li>
+                    <li>WhatsApp + web widget support</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">90s</span>
+                    <span class="card-stat-label">Avg. first response time</span>
+                  </div>
+                </div>
+                <a class="link" href="#work">See results <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">03</span>
+                <h3 class="h3">Lead profiling</h3>
+                <p class="card-desc">We enrich every lead with behavioral and contextual data — budget range, location preference, purchase timeline — so your sales team knows exactly who they're talking to.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>Behavioral scoring + interest mapping</li>
+                    <li>Demographic & firmographic enrichment</li>
+                    <li>Lead temperature classification</li>
+                    <li>Budget and timeline signals</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">−41%</span>
+                    <span class="card-stat-label">Reduction in unqualified follow-ups</span>
+                  </div>
+                </div>
+                <a class="link" href="#pricing">View offer <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">04</span>
+                <h3 class="h3">Persona creation</h3>
+                <p class="card-desc">Each lead gets a dynamic buyer persona — mapped to pain points, buying stage, and decision-making patterns. Your nurture sequences speak to intent, not guesswork.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>Auto-generated buyer personas</li>
+                    <li>Purchase intent + urgency signals</li>
+                    <li>Personalized nurture paths</li>
+                    <li>Segment-specific messaging</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">+68%</span>
+                    <span class="card-stat-label">Lead-to-site-visit conversion rate</span>
+                  </div>
+                </div>
+                <a class="link" href="#contact">Discuss scope <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">05</span>
+                <h3 class="h3">Smart calling</h3>
+                <p class="card-desc">Intelligent voice outreach at the right moment — when the lead is warm and the data says they're ready to talk. Persona-driven scripts mean your team closes faster with less effort.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>Automated call scheduling</li>
+                    <li>Real-time objection handling</li>
+                    <li>Call analytics + conversion tracking</li>
+                    <li>Persona-driven call scripts</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">2×</span>
+                    <span class="card-stat-label">Monthly closures after deployment</span>
+                  </div>
+                </div>
+                <a class="link" href="#how">See process <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+
+          <div class="card-stack-panel">
+            <div class="card-stack-inner">
+              <article class="card-k glass" role="listitem">
+                <span class="card-step">06</span>
+                <h3 class="h3">CRM + closure</h3>
+                <p class="card-desc">Qualified leads push directly into your CRM — tagged, scored, and ready for site visits or deal closure. Full-funnel attribution so you know exactly what's working.</p>
+                <div class="card-columns">
+                  <ul class="bullet">
+                    <li>CRM sync + pipeline mapping</li>
+                    <li>Site visit scheduling + reminders</li>
+                    <li>Full-funnel attribution dashboard</li>
+                    <li>Revenue and ROI reporting</li>
+                  </ul>
+                  <div class="card-stat">
+                    <span class="card-stat-num">200+</span>
+                    <span class="card-stat-label">Qualified site visits in 60 days</span>
+                  </div>
+                </div>
+                <a class="link" href="#contact">Get started <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="card-stack-spacer"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PORTFOLIO — Stacked Folders -->
+    <section id="work" style="position:relative;z-index:2;overflow:visible;padding:clamp(80px,8vw,140px) 0 clamp(120px,10vw,180px);background:#050507;">
+      <style>
+        .folder-stack{
+          position:relative;width:min(900px,100% - 48px);margin:0 auto;
+          height:520px;
+        }
+
+        /* Each folder is absolutely positioned, stacked */
+        .folder-card{
+          position:absolute;left:0;right:0;bottom:0;
+          border-radius:20px 20px 20px 20px;
+          min-height:420px;
+          cursor:pointer;
+          transition:transform 0.6s cubic-bezier(.22,1,.36,1),
+                     box-shadow 0.6s ease,
+                     filter 0.6s ease;
+          will-change:transform;
+        }
+
+        /* Tab notch — sits above the card */
+        .folder-card::before{
+          content:attr(data-tab);
+          position:absolute;top:0;
+          height:44px;
+          border-radius:14px 14px 0 0;
+          background:inherit;
+          display:flex;align-items:center;padding:0 24px;
+          font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+          color:inherit;
+          transform:translateY(-100%);
+          pointer-events:auto;
+          transition:opacity 0.4s ease;
+        }
+
+        /* Stagger tab positions so they peek out */
+        .folder-card:nth-child(1)::before{left:32px;min-width:140px}
+        .folder-card:nth-child(2)::before{left:192px;min-width:170px}
+        .folder-card:nth-child(3)::before{left:382px;min-width:170px}
+
+        /* Default stacked positions — back cards poke up a bit */
+        .folder-card:nth-child(1){z-index:1;transform:translateY(-60px) scale(0.96);filter:brightness(0.6)}
+        .folder-card:nth-child(2){z-index:2;transform:translateY(-30px) scale(0.98);filter:brightness(0.8)}
+        .folder-card:nth-child(3){z-index:3;transform:translateY(0);filter:brightness(1)}
+
+        /* Active folder — comes to front */
+        .folder-card.active{z-index:10 !important;transform:translateY(0) scale(1) !important;filter:brightness(1) !important;box-shadow:0 -8px 60px rgba(0,0,0,0.5)}
+        /* Inactive folders when something is active — push down behind */
+        .folder-stack.has-active .folder-card:not(.active){
+          filter:brightness(0.55) !important;
+        }
+        .folder-stack.has-active .folder-card:not(.active):nth-child(1){transform:translateY(-60px) scale(0.94) !important}
+        .folder-stack.has-active .folder-card:not(.active):nth-child(2){transform:translateY(-60px) scale(0.94) !important}
+        .folder-stack.has-active .folder-card:not(.active):nth-child(3){transform:translateY(-60px) scale(0.94) !important}
+
+        /* Override for whichever is active — keep original nth-child push for the rest */
+        .folder-card.active ~ .folder-card:not(.active){
+          transform:translateY(30px) scale(0.97) !important;
+          filter:brightness(0.65) !important;
+        }
+
+        .folder-card:hover:not(.active){filter:brightness(0.9) !important}
+
+        /* Inner content */
+        .folder-inner{
+          padding:clamp(40px,4vw,56px) clamp(32px,4vw,48px);
+          opacity:0;pointer-events:none;
+          transition:opacity 0.4s ease 0.1s;
+          min-height:340px;
+          display:flex;flex-direction:column;justify-content:center;
+        }
+        .folder-card.active .folder-inner{opacity:1;pointer-events:auto}
+
+        /* Always-visible preview on non-active cards */
+        .folder-preview{
+          position:absolute;bottom:0;left:0;right:0;
+          padding:28px clamp(32px,4vw,48px);
+          opacity:1;
+          transition:opacity 0.3s ease;
+        }
+        .folder-card.active .folder-preview{opacity:0;pointer-events:none}
+
+        .folder-preview-title{
+          font-family:'DM Serif Display',serif;
+          font-size:clamp(1.3rem,2.2vw,1.8rem);line-height:1.2;
+          letter-spacing:-0.02em;margin:0;
+        }
+
+        /* Full content typography */
+        .fc-title{
+          font-family:'DM Serif Display',serif;
+          font-size:clamp(1.8rem,3.5vw,2.8rem);line-height:1.1;
+          letter-spacing:-0.03em;margin:0 0 20px;
+        }
+        .fc-body{font-size:clamp(0.92rem,1vw,1.05rem);line-height:1.7;max-width:580px;margin:0 0 32px;opacity:0.75}
+        .fc-stats{display:flex;flex-wrap:wrap;gap:8px 48px;margin-bottom:24px}
+        .fc-stat{display:flex;align-items:baseline;gap:8px}
+        .fc-stat-num{font-family:'DM Serif Display',serif;font-size:clamp(2.2rem,3.5vw,3rem);font-weight:400;line-height:1}
+        .fc-stat-label{font-size:0.82rem;opacity:0.65}
+
+        /* Scroll reveal */
+        .folder-stack{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s cubic-bezier(.22,1,.36,1)}
+        .folder-stack.show{opacity:1;transform:translateY(0)}
+
+        @media(max-width:700px){
+          .folder-stack{height:480px}
+          .folder-card{min-height:380px;border-radius:16px}
+          .folder-card::before{height:36px;padding:0 16px;font-size:0.6rem;border-radius:10px 10px 0 0}
+          .folder-card:nth-child(1)::before{left:16px;min-width:90px}
+          .folder-card:nth-child(2)::before{left:120px;min-width:110px}
+          .folder-card:nth-child(3)::before{left:245px;min-width:110px}
+          .folder-inner{padding:28px 24px}
+          .folder-preview{padding:20px 24px}
+          .fc-stats{gap:6px 28px}
+          .fc-stat-num{font-size:1.8rem}
+        }
+        @media(max-width:480px){
+          .folder-card:nth-child(1)::before{left:12px;min-width:70px}
+          .folder-card:nth-child(2)::before{left:92px;min-width:90px}
+          .folder-card:nth-child(3)::before{left:194px;min-width:90px}
+        }
+      </style>
+
+      <header style="text-align:center;width:min(700px,100% - 48px);margin:0 auto clamp(48px,5vw,80px);">
+        <p style="margin:0 0 12px;"><span class="pill">Portfolio</span></p>
+        <h2 style="font-family:'DM Serif Display',serif;font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;margin:0 0 16px;letter-spacing:-0.03em;color:rgba(255,255,255,0.95);">The results speak louder than the pitch</h2>
+        <p style="font-size:clamp(0.95rem,1.1vw,1.1rem);line-height:1.65;color:rgba(255,255,255,0.55);margin:0;">Real outcomes from the first 6 months. Click a folder to explore.</p>
+      </header>
+
+      <div class="folder-stack" id="folderStack">
+
+        <!-- Folder 1 — dark purple (back) -->
+        <div class="folder-card" data-tab="01 — Leads" style="background:#1e1035;color:rgba(255,255,255,0.92);">
+          <div class="folder-preview">
+            <h3 class="folder-preview-title">12,000+ qualified leads</h3>
+          </div>
+          <div class="folder-inner">
+            <h3 class="fc-title">12,000+ qualified leads captured</h3>
+            <p class="fc-body">Built end-to-end lead funnels for 8 premium real estate developers — from Meta &amp; Google ad campaigns through AI-qualified landing pages to CRM-routed handoffs. Every lead scored, every follow-up timed.</p>
+            <div class="fc-stats">
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#c4b5fd;" data-count-to="12000" data-count-suffix="+">0</span>
+                <span class="fc-stat-label">Leads</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#c4b5fd;" data-count-to="41" data-count-suffix="%">0</span>
+                <span class="fc-stat-label">Lower CPL</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#c4b5fd;">8</span>
+                <span class="fc-stat-label">Developers</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Folder 2 — lavender (middle) -->
+        <div class="folder-card" data-tab="02 — Conversion" style="background:#c4b5fd;color:#1a0e2e;">
+          <div class="folder-preview">
+            <h3 class="folder-preview-title">3.2× conversion lift</h3>
+          </div>
+          <div class="folder-inner">
+            <h3 class="fc-title">3.2× conversion lift in 60 days</h3>
+            <p class="fc-body" style="color:rgba(26,14,46,0.65);">Our AI chatbot responds in 90 seconds, qualifies intent, and books site visits automatically. Sales teams close — they don't chase. The funnel does the filtering so humans do what they're best at.</p>
+            <div class="fc-stats">
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#4c1d95;" data-count-to="3.2" data-count-suffix="×" data-count-decimal="1">0</span>
+                <span class="fc-stat-label">Conversion lift</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#4c1d95;" data-count-to="90" data-count-suffix="s">0</span>
+                <span class="fc-stat-label">Response time</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#4c1d95;" data-count-to="200" data-count-suffix="+">0</span>
+                <span class="fc-stat-label">Site visits</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Folder 3 — vibrant purple (front) -->
+        <div class="folder-card active" data-tab="03 — Full System" style="background:#7c3aed;color:#fff;">
+          <div class="folder-preview">
+            <h3 class="folder-preview-title">One system. Week 3 ROI.</h3>
+          </div>
+          <div class="folder-inner">
+            <h3 class="fc-title">One system. Paid for itself in week 3.</h3>
+            <p class="fc-body">From ad creative to CRM closure — a single pipeline that replaces 4 vendors and 6 spreadsheets. Real-time dashboards. Automated nurture sequences. Smart calling that prioritises the hottest leads first.</p>
+            <div class="fc-stats">
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#fff;">4</span>
+                <span class="fc-stat-label">Vendors replaced</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#fff;">Wk 3</span>
+                <span class="fc-stat-label">ROI positive</span>
+              </div>
+              <div class="fc-stat">
+                <span class="fc-stat-num" style="color:#fff;">100%</span>
+                <span class="fc-stat-label">Pipeline visibility</span>
+              </div>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;">
+              <a class="btn btn-primary" href="#contact" style="background:#fff;color:#4c1d95;border-color:#fff;">Book a funnel audit</a>
+              <a class="btn btn-secondary" href="#pricing" style="border-color:rgba(255,255,255,0.4);color:#fff;">See the offer</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <script>
+      (function(){
+        var stack = document.getElementById('folderStack');
+        var cards = stack.querySelectorAll('.folder-card');
+
+        // Click to bring folder to front
+        cards.forEach(function(card){
+          card.addEventListener('click', function(e){
+            if(e.target.closest('a')) return;
+            if(card.classList.contains('active')) return;
+            cards.forEach(function(c){ c.classList.remove('active'); });
+            card.classList.add('active');
+            stack.classList.add('has-active');
+            runCounters(card);
+          });
+        });
+
+        // Counter animation — fires once per element
+        function runCounters(container){
+          var vals = container.querySelectorAll('[data-count-to]');
+          vals.forEach(function(el){
+            if(el.dataset.counted) return;
+            el.dataset.counted = '1';
+            var target = parseFloat(el.getAttribute('data-count-to'));
+            if(isNaN(target)) return;
+            var suffix = el.getAttribute('data-count-suffix') || '';
+            var dec = parseInt(el.getAttribute('data-count-decimal') || '0');
+            var dur = 1200, start = performance.now();
+            (function step(now){
+              var t = Math.min((now - start) / dur, 1);
+              var eased = 1 - Math.pow(1 - t, 3);
+              var val = target * eased;
+              el.textContent = dec > 0 ? val.toFixed(dec) + suffix : Math.round(val).toLocaleString() + suffix;
+              if(t < 1) requestAnimationFrame(step);
+            })(performance.now());
+          });
+        }
+
+        // Initial counter run for the default-active card
+        stack.classList.add('has-active');
+        runCounters(stack.querySelector('.folder-card.active'));
+
+        // Scroll reveal
+        var obs = new IntersectionObserver(function(entries){
+          entries.forEach(function(e){
+            if(e.isIntersecting){ e.target.classList.add('show'); obs.unobserve(e.target); }
+          });
+        }, {threshold: 0.15});
+        obs.observe(stack);
+      })();
+      </script>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" class="section pricing">
+      <div class="pricing-bg" aria-hidden="true">
+        <div class="orb orb--pricing"></div>
+      </div>
+
+      <div class="container">
+        <header class="section-head center">
+          <p class="eyebrow"><span class="pill">Offer</span></p>
+          <h2 class="h2">One system. One monthly fee. Full pipeline.</h2>
+          <p class="lead">Everything from landing page to CRM closure — no per-lead charges, no hidden costs.</p>
+        </header>
+
+        <article class="pricing-card glass" aria-label="Pricing card">
+          <div class="pricing-top">
+            <div>
+              <p class="micro-label">Ensocial Lead Engine</p>
+              <p class="body-muted">For teams selling high-ticket products who need a predictable flow of qualified, sales-ready leads every month.</p>
+            </div>
+          </div>
+
+          <div class="pricing-grid">
+            <ul class="checklist" aria-label="Included">
+              <li>High-converting landing pages</li>
+              <li>24/7 chatbot qualification</li>
+              <li>Lead profiling + persona engine</li>
+            </ul>
+            <ul class="checklist" aria-label="Also included">
+              <li>Smart calling + follow-up</li>
+              <li>CRM integration + site visit routing</li>
+              <li>Full-funnel analytics dashboard</li>
+            </ul>
+          </div>
+
+          <div class="pricing-actions">
+            <a class="btn btn-primary" href="#contact">Get started</a>
+            <a class="btn btn-secondary" href="#contact">Book a demo</a>
+          </div>
+
+          <p class="micro-muted">
+            Need a quick start? We offer 14-day sprint deployments — landing page + chatbot live in two weeks.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- CONTACT / FINAL CTA -->
+    <section id="contact" class="section section-elevated cta">
+      <div class="container cta-inner">
+        <div class="cta-copy">
+          <p class="eyebrow"><span class="pill">Contact</span></p>
+          <h2 class=”h2”>Start converting leads in the next 14 days.</h2>
+          <p class=”lead”>Tell us what you’re selling and how many leads you need. We’ll reply with a deployment plan and a clear timeline.</p>
+
+          <div class="contact-points" aria-label="Direct contact options">
+            <a class="contact-chip" href="tel:+10000000000">
+              <span class="micro-label">Call</span>
+              <span class="body-muted">+1 (000) 000‑0000</span>
+            </a>
+            <a class="contact-chip" href="https://wa.me/10000000000" target="_blank" rel="noopener">
+              <span class="micro-label">WhatsApp</span>
+              <span class="body-muted">Chat with our team</span>
+            </a>
+            <a class="contact-chip" href="mailto:hello@ensocial.example">
+              <span class="micro-label">Email</span>
+              <span class="body-muted">hello@ensocial.example</span>
+            </a>
+          </div>
+        </div>
+
+        <form class="form glass" aria-label="Enquiry form">
+          <div class="form-row">
+            <div class="field">
+              <label for="name">Full name</label>
+              <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name" required />
+            </div>
+            <div class="field">
+              <label for="email">Work email</label>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="phone">Phone (optional)</label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+1 555 0123" />
+            </div>
+            <div class="field">
+              <label for="budget">Monthly lead volume target</label>
+              <select id="budget" name="budget" required>
+                <option value="" selected disabled>Select…</option>
+                <option>50–100 leads</option>
+                <option>100–300 leads</option>
+                <option>300–1,000 leads</option>
+                <option>1,000+ leads</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="message">Tell us about your project</label>
+            <textarea id="message" name="message" rows="5" placeholder="What are you selling, who is your buyer, and what does your current lead flow look like?" required></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Send enquiry</button>
+            <p class="micro-muted" id="form-note">We respond within 24 hours with a custom deployment plan.</p>
+          </div>
+
+          <div class="form-status" role="status" aria-live="polite" aria-atomic="true"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- Desktop FABs -->
+  <aside class="fab-stack" aria-label="Quick actions">
+    <a class="fab" href="tel:+10000000000" aria-label="Call Ensocial">
+      <span aria-hidden="true">☎</span>
+    </a>
+    <a class="fab" href="https://wa.me/10000000000" target="_blank" rel="noopener" aria-label="WhatsApp Ensocial">
+      <span aria-hidden="true">WA</span>
+    </a>
+    <a class="fab" href="#contact" aria-label="Enquire with Ensocial">
+      <span aria-hidden="true">✉</span>
+    </a>
+  </aside>
+
+  <!-- Mobile action bar -->
+  <nav class="mobile-bar" aria-label="Mobile quick actions">
+    <a class="mobile-action" href="tel:+10000000000">
+      <span class="mobile-action-title">Call</span>
+      <span class="mobile-action-sub">Now</span>
+    </a>
+    <a class="mobile-action" href="https://wa.me/10000000000" target="_blank" rel="noopener">
+      <span class="mobile-action-title">WhatsApp</span>
+      <span class="mobile-action-sub">Chat</span>
+    </a>
+    <a class="mobile-action mobile-action--primary" href="#contact">
+      <span class="mobile-action-title">Enquire</span>
+      <span class="mobile-action-sub">Form</span>
+    </a>
+  </nav>
+
+  <button class="back-to-top" type="button" aria-label="Back to top" data-backtotop>
+    <span aria-hidden="true">↑</span>
+  </button>
+
+  <footer class="site-footer" aria-label="Footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="brand brand--footer" aria-label="Ensocial footer brand">
+          <img class="brand-logo" src="./images/Ensocial logo(Trans).svg" alt="" width="42" height="42" />
+          <span class="brand-text">
+            <span class="brand-name">Ensocial</span>
+            <span class="brand-tag">AI-native marketing</span>
+          </span>
+        </div>
+        <p class="footer-muted">
+          End-to-end lead management — from first click to closed deal.
+        </p>
+      </div>
+
+      <div class="footer-cols">
+        <section class="footer-col" aria-label="Contact details">
+          <h3 class="footer-title">Contact</h3>
+          <ul class="footer-list">
+            <li><a href="mailto:hello@ensocial.example">hello@ensocial.example</a></li>
+            <li><a href="tel:+10000000000">+1 (000) 000‑0000</a></li>
+            <li><a href="https://wa.me/10000000000" target="_blank" rel="noopener">WhatsApp</a></li>
+          </ul>
+        </section>
+
+        <section class="footer-col" aria-label="Links">
+          <h3 class="footer-title">Explore</h3>
+          <ul class="footer-list">
+            <li><a href="#how">How we work</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#work">Portfolio</a></li>
+            <li><a href="#pricing">Offer</a></li>
+          </ul>
+        </section>
+
+        <section class="footer-col" aria-label="Compliance">
+          <h3 class="footer-title">Legal</h3>
+          <p class="footer-muted small">
+            All metrics shown are from actual client deployments unless stated otherwise. Results vary by market, product, and lead volume.
+            This website is for informational purposes and does not constitute a legal offer.
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p class="small footer-muted">© <span id="year"></span> Ensocial. All rights reserved.</p>
+        <a class="small footer-link" href="#top">Back to top</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Year
+      const yearEl = document.getElementById('year');
+      if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+
+      // Smooth scroll (JS fallback + focus management for in-page anchors)
+      function smoothScrollTo(target) {
+        if (!target) return;
+        const header = document.querySelector('[data-header]');
+        const headerH = header ? header.getBoundingClientRect().height : 0;
+        const y = window.scrollY + target.getBoundingClientRect().top - (headerH + 12);
+        window.scrollTo({ top: y, behavior: prefersReduced ? 'auto' : 'smooth' });
+      }
+
+      document.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href^="#"]');
+        if (!a) return;
+        const href = a.getAttribute('href');
+        if (!href || href === '#') return;
+        const id = href.slice(1);
+        const target = document.getElementById(id);
+        if (!target) return;
+
+        e.preventDefault();
+        smoothScrollTo(target);
+
+        // Close mobile nav if open
+        const nav = document.getElementById('primary-nav');
+        const toggle = document.querySelector('.nav-toggle');
+        if (nav && toggle && nav.classList.contains('is-open')) {
+          nav.classList.remove('is-open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        // Set focus after scroll
+        window.setTimeout(() => {
+          target.setAttribute('tabindex', '-1');
+          target.focus({ preventScroll: true });
+          target.removeAttribute('tabindex');
+        }, prefersReduced ? 0 : 350);
+      });
+
+      // Nav toggle
+      const nav = document.getElementById('primary-nav');
+      const toggle = document.querySelector('.nav-toggle');
+      if (nav && toggle) {
+        const setOpen = (open) => {
+          nav.classList.toggle('is-open', open);
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          document.body.classList.toggle('nav-open', open);
+        };
+
+        toggle.addEventListener('click', () => {
+          const isOpen = nav.classList.contains('is-open');
+          setOpen(!isOpen);
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') setOpen(false);
+        });
+
+        // Close when clicking outside (mobile)
+        document.addEventListener('click', (e) => {
+          if (!nav.classList.contains('is-open')) return;
+          if (e.target.closest('#primary-nav') || e.target.closest('.nav-toggle')) return;
+          setOpen(false);
+        });
+      }
+
+      // Sticky header style
+      const header = document.querySelector('[data-header]');
+      const onScrollHeader = () => {
+        if (!header) return;
+        header.classList.toggle('is-scrolled', window.scrollY > 8);
+      };
+      onScrollHeader();
+      window.addEventListener('scroll', onScrollHeader, { passive: true });
+
+      // Tabs
+      document.querySelectorAll('[data-tabs]').forEach((tabs) => {
+        const tablist = tabs.querySelector('[role="tablist"]');
+        const allTabs = Array.from(tabs.querySelectorAll('[role="tab"]'));
+        const panels = Array.from(tabs.querySelectorAll('[role="tabpanel"]'));
+
+        const activate = (tab) => {
+          allTabs.forEach(t => {
+            const selected = t === tab;
+            t.setAttribute('aria-selected', selected ? 'true' : 'false');
+            t.tabIndex = selected ? 0 : -1;
+          });
+          panels.forEach(p => {
+            p.hidden = p.getAttribute('aria-labelledby') !== tab.id;
+          });
+        };
+
+        allTabs.forEach(tab => tab.addEventListener('click', () => activate(tab)));
+
+        tablist?.addEventListener('keydown', (e) => {
+          const current = document.activeElement;
+          const i = allTabs.indexOf(current);
+          if (i === -1) return;
+
+          let nextIndex = null;
+          if (e.key === 'ArrowRight') nextIndex = (i + 1) % allTabs.length;
+          if (e.key === 'ArrowLeft') nextIndex = (i - 1 + allTabs.length) % allTabs.length;
+          if (e.key === 'Home') nextIndex = 0;
+          if (e.key === 'End') nextIndex = allTabs.length - 1;
+
+          if (nextIndex !== null) {
+            e.preventDefault();
+            allTabs[nextIndex].focus();
+            activate(allTabs[nextIndex]);
+          }
+        });
+      });
+
+      // Hero carousel (dots + auto-advance)
+      const carousel = document.querySelector('[data-carousel]');
+      if (carousel) {
+        const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
+        const dots = Array.from(carousel.querySelectorAll('.dot-btn'));
+        const thumb = carousel.querySelector('.carousel-thumb');
+
+        let index = slides.findIndex(s => s.classList.contains('is-active'));
+        if (index < 0) index = 0;
+
+        const setSlide = (i) => {
+          index = (i + slides.length) % slides.length;
+          slides.forEach((s, idx) => s.classList.toggle('is-active', idx === index));
+          dots.forEach((d, idx) => {
+            const active = idx === index;
+            d.setAttribute('aria-selected', active ? 'true' : 'false');
+            d.tabIndex = active ? 0 : -1;
+          });
+
+          // Move purple dot between the 3 grey dots (center-to-center) + liquid-ish animation
+          if (thumb) {
+            const wrap = thumb.parentElement; // .carousel-dots
+            const dotEls = Array.from(wrap.querySelectorAll('.dot-btn'));
+            const activeDot = dotEls[index];
+
+            if (activeDot) {
+              const wrapRect = wrap.getBoundingClientRect();
+              const dotRect = activeDot.getBoundingClientRect();
+
+              // x = center of active dot relative to wrap
+              const x = (dotRect.left - wrapRect.left) + (dotRect.width / 2) - (thumb.clientWidth / 2);
+
+              // feed the keyframes with the final x (so scale animation keeps correct position)
+              thumb.style.setProperty('--x', `${x}px`);
+
+              // restart "liquid" animation each move
+              thumb.classList.remove('is-moving');
+              // force reflow so animation restarts reliably
+              void thumb.offsetWidth;
+              thumb.classList.add('is-moving');
+
+              thumb.style.transform = `translate(${x}px, -50%)`;
+            }
+          }
+        };
+
+        let timerId = null;
+        const stopAuto = () => {
+          if (timerId) window.clearInterval(timerId);
+          timerId = null;
+        };
+        const startAuto = () => {
+          if (prefersReduced || slides.length < 2) return;
+          stopAuto();
+          timerId = window.setInterval(() => setSlide(index + 1), 3000);
+        };
+
+        dots.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            setSlide(Number(btn.dataset.slide));
+            startAuto(); // reset 3s timer after manual interaction
+          });
+        });
+
+        // Pause on hover/focus; resume after
+        carousel.addEventListener('mouseenter', stopAuto);
+        carousel.addEventListener('mouseleave', startAuto);
+        carousel.addEventListener('focusin', stopAuto);
+        carousel.addEventListener('focusout', startAuto);
+
+        setSlide(index);
+        startAuto();
+      }
+
+      // Back to top
+      const btt = document.querySelector('[data-backtotop]');
+      const onScrollBtt = () => {
+        if (!btt) return;
+        btt.classList.toggle('is-visible', window.scrollY > 700);
+      };
+      onScrollBtt();
+      window.addEventListener('scroll', onScrollBtt, { passive: true });
+
+      btt?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
+      });
+
+      // Reveal on scroll
+      const revealEls = document.querySelectorAll('.section, .card, .case, .pricing-card, .process-card, .media-frame');
+      if (!prefersReduced && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-inview');
+              io.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+        revealEls.forEach(el => {
+          el.classList.add('reveal');
+          io.observe(el);
+        });
+      }
+
+      // Cloth warp disabled — cards render flat
+
+      // Timeline scroll animation
+      (function() {
+        var timeline = document.getElementById('timeline');
+        if (!timeline) return;
+        var progress = timeline.querySelector('.timeline-progress');
+        var track = timeline.querySelector('.timeline-track');
+        var items = timeline.querySelectorAll('[data-timeline-item]');
+        var ticking = false;
+
+        function positionTrack() {
+          var firstDot = timeline.querySelector('.timeline-dot');
+          if (!firstDot || !track) return;
+          var timelineRect = timeline.getBoundingClientRect();
+          var dotRect = firstDot.getBoundingClientRect();
+          var dotCenterX = dotRect.left + dotRect.width / 2 - timelineRect.left;
+          track.style.left = dotCenterX + 'px';
+          track.style.transform = 'translateX(-50%)';
+        }
+
+        function updateTimeline() {
+          var rect = timeline.getBoundingClientRect();
+          var timelineTop = rect.top;
+          var timelineHeight = rect.height;
+          var viewH = window.innerHeight;
+          var triggerY = viewH * 0.5;
+
+          var scrolled = (triggerY - timelineTop) / timelineHeight;
+          scrolled = Math.max(0, Math.min(1, scrolled));
+          progress.style.height = (scrolled * 100) + '%';
+
+          items.forEach(function(item) {
+            var itemRect = item.getBoundingClientRect();
+            var itemCenter = itemRect.top + itemRect.height / 2;
+            if (itemCenter < triggerY + 50) {
+              item.classList.add('is-active');
+            } else {
+              item.classList.remove('is-active');
+            }
+          });
+          ticking = false;
+        }
+
+        function onScroll() {
+          if (!ticking) {
+            requestAnimationFrame(updateTimeline);
+            ticking = true;
+          }
+        }
+
+        positionTrack();
+        window.addEventListener('resize', positionTrack);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        updateTimeline();
+      })();
+
+      // Form (demo submission)
+      const form = document.querySelector('.form');
+      const status = document.querySelector('.form-status');
+      form?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!status) return;
+
+        const fd = new FormData(form);
+        const name = String(fd.get('name') || '').trim();
+        status.textContent = name ? `Thanks, ${name}. Your enquiry has been queued.` : 'Thanks. Your enquiry has been queued.';
+        form.reset();
+      });
+    })();
+  
+
+/* === MICRO: Stagger Cards === */
+(function() {
+  var grids = document.querySelectorAll('.configurations .grid, .configurations .cards, .amenities .grid, .amenities .cards, [class*="config"] [class*="grid"], [class*="config"] [class*="cards"], [class*="amenit"] [class*="grid"], [class*="amenit"] [class*="cards"]');
+  if (!grids.length) grids = document.querySelectorAll('[class*="card"]:first-child').length ? [] : [];
+  // Fallback: find any container with 3+ card-like children
+  if (!grids.length) {
+    document.querySelectorAll('section').forEach(function(sec) {
+      var cards = sec.querySelectorAll('[class*="card"]');
+      if (cards.length >= 3 && cards[0].parentElement) {
+        cards[0].parentElement.setAttribute('data-stagger-group', '');
+      }
+    });
+    grids = document.querySelectorAll('[data-stagger-group]');
+  } else {
+    grids.forEach(function(g) { g.setAttribute('data-stagger-group', ''); });
+  }
+  grids.forEach(function(g) {
+    Array.from(g.children).forEach(function(child, i) {
+      child.style.transitionDelay = (i * 0.12) + 's';
+    });
+  });
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('stagger-active'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('[data-stagger-group]').forEach(function(el) { obs.observe(el); });
+})();
+
+
+/* === MICRO: Word Flip === */
+(function() {
+  var wraps = document.querySelectorAll('.word-flip-wrap');
+  wraps.forEach(function(wrap) {
+    var words = wrap.querySelectorAll('.wf-word');
+    if (words.length < 2) return;
+    var idx = 0;
+    words[0].classList.add('wf-active');
+    setInterval(function() {
+      var prev = words[idx];
+      idx = (idx + 1) % words.length;
+      var next = words[idx];
+      prev.classList.remove('wf-active');
+      prev.classList.add('wf-exit');
+      next.classList.remove('wf-exit');
+      next.classList.add('wf-active');
+      setTimeout(function() { prev.classList.remove('wf-exit'); }, 500);
+    }, 2500);
+  });
+})();
+
+
+/* === MICRO: Number Counter === */
+(function() {
+  var allEls = document.querySelectorAll('h2, h3, h4, span, strong, b, p, div');
+  var numberEls = [];
+  allEls.forEach(function(el) {
+    if (el.children.length > 0) return;
+    if (el.hasAttribute('data-count-to')) return;
+    var text = el.textContent.trim();
+    var match = text.match(/^([\d,]+)(\s*.*)$/);
+    if (match && parseInt(match[1].replace(/,/g,'')) >= 10) {
+      el.setAttribute('data-count-target', match[1].replace(/,/g,''));
+      el.setAttribute('data-count-suffix', match[2] || '');
+      el.setAttribute('data-count-original', text);
+      numberEls.push(el);
+    }
+  });
+  if (!numberEls.length) return;
+  function animateCount(el) {
+    var target = parseInt(el.getAttribute('data-count-target'));
+    var suffix = el.getAttribute('data-count-suffix');
+    var duration = Math.min(1500, Math.max(600, target * 2));
+    var start = performance.now();
+    function step(now) {
+      var progress = Math.min((now - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var current = Math.round(target * eased);
+      el.textContent = current.toLocaleString() + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { animateCount(e.target); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.5 });
+  numberEls.forEach(function(el) { obs.observe(el); });
+})();
+
+
+/* === MICRO: Smooth Section Headers === */
+(function() {
+  var headers = document.querySelectorAll('section > h2, section > .section-title, section > header > h2, section > div > h2');
+  headers.forEach(function(h) { h.setAttribute('data-header-reveal', ''); });
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('revealed'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.2, rootMargin: '0px 0px -20px 0px' });
+  document.querySelectorAll('[data-header-reveal]').forEach(function(el) { obs.observe(el); });
+})();
+
+/* Shooting star on first scroll */
+(function() {
+  var star = document.getElementById('shooting-star');
+  var fired = false;
+  window.addEventListener('scroll', function() {
+    if (!fired && window.pageYOffset > 10) {
+      fired = true;
+      star.classList.add('active');
+      star.addEventListener('animationend', function() {
+        star.classList.remove('active');
+      });
+    }
+  });
+})();
+
+
+/* GSAP ScrollTrigger — sticky card deck (animates wrapper, not card) */
+(function() {
+  gsap.registerPlugin(ScrollTrigger);
+
+  var panels = document.querySelectorAll('.card-stack-panel');
+  var total = panels.length;
+
+  panels.forEach(function(panel, i) {
+    var inner = panel.querySelector('.card-stack-inner');
+    if (!inner || i >= total - 1) return;
+
+    gsap.to(inner, {
+      scale: 0.92,
+      opacity: 0,
+      y: -30,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: panel,
+        start: 'top 10vh',
+        end: 'bottom 10vh',
+        scrub: 0.5,
+      },
+    });
+  });
+})();
+
+/* Three.js Mesh Gradient — ported from KOTA with Ensocial purple palette */
+(function() {
+  var container = document.getElementById('mesh-gradient');
+  if (!container) return;
+
+  var PI = Math.PI;
+  var rnd = Math.random();
+
+  // Perlin noise GLSL
+  var noiseGLSL = [
+    'vec2 fade(vec2 t){return t*t*t*(t*(t*6.0-15.0)+10.0);}',
+    'vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}',
+    'float cnoise21(vec2 P){',
+    '  vec4 Pi=floor(P.xyxy)+vec4(0,0,1,1);',
+    '  vec4 Pf=fract(P.xyxy)-vec4(0,0,1,1);',
+    '  Pi=mod(Pi,289.0);',
+    '  vec4 ix=Pi.xzxz,iy=Pi.yyww,fx=Pf.xzxz,fy=Pf.yyww;',
+    '  vec4 i=permute(permute(ix)+iy);',
+    '  vec4 gx=2.0*fract(i*0.0243902439)-1.0;',
+    '  vec4 gy=abs(gx)-0.5;',
+    '  vec4 tx=floor(gx+0.5);',
+    '  gx=gx-tx;',
+    '  vec2 g00=vec2(gx.x,gy.x),g10=vec2(gx.y,gy.y);',
+    '  vec2 g01=vec2(gx.z,gy.z),g11=vec2(gx.w,gy.w);',
+    '  vec4 norm=1.79284291400159-0.85373472095314*vec4(dot(g00,g00),dot(g01,g01),dot(g10,g10),dot(g11,g11));',
+    '  g00*=norm.x;g01*=norm.y;g10*=norm.z;g11*=norm.w;',
+    '  float n00=dot(g00,vec2(fx.x,fy.x)),n10=dot(g10,vec2(fx.y,fy.y));',
+    '  float n01=dot(g01,vec2(fx.z,fy.z)),n11=dot(g11,vec2(fx.w,fy.w));',
+    '  vec2 fade_xy=fade(Pf.xy);',
+    '  vec2 n_x=mix(vec2(n00,n01),vec2(n10,n11),fade_xy.x);',
+    '  return 2.3*mix(n_x.x,n_x.y,fade_xy.y);',
+    '}'
+  ].join('\n');
+
+  // Vertex shader
+  var vertexShader = [
+    'varying vec2 uPos;',
+    'varying vec2 vUv;',
+    'uniform vec2 uRayMouse;',
+    'uniform float uMouseEffect;',
+    'uniform float uRatio;',
+    'float uTrailWidth=0.15;',
+    'float PI='+PI+';',
+    'void main(){',
+    '  vUv=uv;',
+    '  vec2 direction=normalize(position.xy-uRayMouse);',
+    '  float distanceToMouse=length(position.xy-uRayMouse);',
+    '  float falloff=smoothstep(0.,uTrailWidth,distanceToMouse);',
+    '  float displacement=uMouseEffect*0.1*falloff;',
+    '  vec3 newPosition=vec3(position.xy-direction*displacement/2.,position.z);',
+    '  uPos=direction*displacement*2.;',
+    '  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
+    '}'
+  ].join('\n');
+
+  // Fragment shader — 6 colors
+  var fragmentShader = [
+    'uniform float uTime;',
+    'uniform vec2 uRayMouse;',
+    'uniform float uMouseEffect;',
+    'uniform float uNoiseAmount;',
+    'uniform float uAmount;',
+    'uniform float uPow;',
+    'uniform float uAlpha;',
+    'varying vec2 vUv;',
+    'varying vec2 uPos;',
+    'uniform vec3 uColor[6];',
+    'float PI='+PI+';',
+    noiseGLSL,
+    'void main(){',
+    '  vec3 firstColor=uColor[0];',
+    '  vec2 seed=(vUv*-uPos)*mix(vUv,uPos,30.0*uAmount);',
+    '  float ml=pow(6.0,0.5)*-0.01;',
+    '  float n=cnoise21(seed)+1.0*uTime;',
+    '  vec3 color=mix(firstColor,firstColor,cnoise21(seed)/1000.0);',
+    '  for(int i=1;i<5;i++){',
+    '    float amount=(float(i)+1.0)*0.09;',
+    '    float n2=smoothstep(amount*uTime+ml,amount*uTime+ml+amount*uTime,n*uTime);',
+    '    color=mix(color,uColor[i],n2);',
+    '  }',
+    '  float alpha=uAlpha*pow(sin(vUv.x*PI),uPow);',
+    '  alpha*=pow(sin(vUv.y*PI),uPow);',
+    '  gl_FragColor=vec4(color,alpha);',
+    '}'
+  ].join('\n');
+
+  // Post-processing distortion shader
+  var postVertexShader = [
+    'varying vec2 vUv;',
+    'varying vec3 vPosition;',
+    'void main(){',
+    '  vUv=uv;',
+    '  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
+    '}'
+  ].join('\n');
+
+  var postFragmentShader = [
+    'uniform vec2 center;',
+    'uniform float angle;',
+    'uniform float scale;',
+    'uniform float uTime;',
+    'uniform float uAmount;',
+    'uniform vec2 uMouse;',
+    'uniform float uMouseEffect;',
+    'uniform float uVelocity;',
+    'uniform vec2 tSize;',
+    'float PI='+PI+';',
+    'float uRandom='+rnd+';',
+    'varying vec3 vPosition;',
+    'uniform sampler2D tDiffuse;',
+    'varying vec2 vUv;',
+    noiseGLSL,
+    'float pattern(){',
+    '  float s=sin(angle),c=cos(angle);',
+    '  vec2 tex=vUv*tSize-center;',
+    '  vec2 point=vec2(c*tex.x-s*tex.y,s*tex.x+c*tex.y)*scale;',
+    '  return (sin(point.x)*sin(point.y))*4.0;',
+    '}',
+    'void main(){',
+    '  vec2 newUv=vUv;',
+    '  vec2 p=2.0*vUv-vec2(1.0);',
+    '  p+=0.3*uRandom*cos(2.0*(p.yx*uRandom)+uTime);',
+    '  p+=0.4*uRandom*cos(5.0*(p.xy*uRandom)+1.5*uTime);',
+    '  p+=0.2*uRandom*cos(3.7*p.yx+2.5*uTime);',
+    '  p+=0.2*cos(7.0*p.yx+0.5*uTime);',
+    '  vec2 centredUv=2.0*vUv-vec2(1.0);',
+    '  newUv=vUv+centredUv*vec2(1.0,1.0);',
+    '  newUv.x=mix(vUv.x,length(p),uAmount);',
+    '  newUv.y=mix(vUv.y,0.0,uAmount);',
+    '  vec4 color=texture2D(tDiffuse,newUv);',
+    '  gl_FragColor=vec4(color.xyz,1.0);',
+    '}'
+  ].join('\n');
+
+  // Ensocial purple palette (replacing KOTA's warm palette)
+  var colorHexes = ['#3B1080', '#6D28D9', '#8B5CF6', '#3B1080', '#A855F7', '#DBAEF6'];
+  var colors = colorHexes.map(function(hex) { return new THREE.Color(hex); });
+
+  // Preset 3 from KOTA (data-background="3", 0-indexed)
+  var preset = {
+    mouseEffect: 1,
+    distortionAmount: 0.15,
+    shapeAmount: 0.20,
+    noiseOpacity: 0.4,
+    widthMultiplier: 0.7,
+    heightMultiplier: 2.8,
+    position: { x: 0, y: 0 },
+    rotation: 0.7,
+    speedMultiplier: 1,
+    timeStart: 100
+  };
+
+  var width = container.offsetWidth;
+  var height = container.offsetHeight;
+
+  // Renderer
+  var renderer = new THREE.WebGLRenderer({ alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x000000);
+  container.appendChild(renderer.domElement);
+
+  // Camera
+  var positionZ = 4000;
+  var camera = new THREE.PerspectiveCamera(40, width / height, 10, 10000);
+  camera.position.z = positionZ;
+  camera.aspect = width / height;
+  camera.fov = 2 * Math.atan(height / 2 / positionZ) * 180 / PI;
+  camera.updateProjectionMatrix();
+
+  // Scene
+  var scene = new THREE.Scene();
+
+  // Mouse
+  var uMouse = new THREE.Vector2(0, 0);
+  var rayMouse = new THREE.Vector2(1, 1);
+  var allowRayMouse = false;
+
+  // Material
+  var material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uNoiseAmount: { value: 0 },
+      uRayMouse: { value: uMouse },
+      uAmount: { value: preset.shapeAmount },
+      uPow: { value: 3.0 },
+      uAlpha: { value: 0.0 },
+      uColor: { value: colors },
+      uMouseEffect: { value: preset.mouseEffect },
+      uVelocity: { value: 0 },
+      uRatio: { value: 1 }
+    },
+    side: THREE.DoubleSide,
+    transparent: true,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader
+  });
+
+  // Geometry & Mesh
+  var geometry = new THREE.PlaneGeometry(1, 1, 128, 128);
+  var plane = new THREE.Mesh(geometry, material);
+  camera.rotation.z = preset.rotation;
+  plane.scale.x = preset.widthMultiplier * width;
+  plane.scale.y = preset.heightMultiplier * (1.25 * height);
+  plane.scale.z = preset.widthMultiplier * width;
+  camera.position.x = preset.position.x * width;
+  camera.position.y = -preset.position.y * height;
+  material.uniforms.uRatio.value = plane.scale.x / plane.scale.y;
+  scene.add(plane);
+
+  // Post-processing
+  var DotScreenShader = {
+    uniforms: {
+      uTime: { value: null },
+      uMouse: { value: new THREE.Vector2(0, 0) },
+      uMouseEffect: { value: 0.1 },
+      uAmount: { value: preset.distortionAmount },
+      uVelocity: { value: 0 },
+      tDiffuse: { value: null },
+      tSize: { value: new THREE.Vector2(256, 256) },
+      center: { value: new THREE.Vector2(0.5, 0.5) },
+      angle: { value: 1.57 },
+      scale: { value: 1 }
+    },
+    vertexShader: postVertexShader,
+    fragmentShader: postFragmentShader
+  };
+
+  var composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  var effect1 = new THREE.ShaderPass(DotScreenShader);
+  effect1.uniforms.uAmount.value = preset.distortionAmount;
+  effect1.uniforms.uMouseEffect.value = preset.mouseEffect;
+  composer.addPass(effect1);
+
+  // Animate in (like KOTA)
+  function animateIn() {
+    gsap.to(material.uniforms.uPow, { value: 1.5, duration: 2, delay: 0.3, ease: 'power4.out' });
+    gsap.to(material.uniforms.uAlpha, { value: 1, duration: 2, delay: 0.3, ease: 'power4.out' });
+    allowRayMouse = false;
+    gsap.to(rayMouse, { x: -0.4, y: -0.4, duration: 2, ease: 'power1.out', onComplete: function() { allowRayMouse = true; } });
+  }
+
+  // Mouse follow
+  var quickToX = gsap.quickTo(uMouse, 'x', { duration: 0.5, ease: 'power1' });
+  var quickToY = gsap.quickTo(uMouse, 'y', { duration: 0.5, ease: 'power1' });
+  var rayXTo = gsap.quickTo(rayMouse, 'x', { duration: 0.75, ease: 'power1' });
+  var rayYTo = gsap.quickTo(rayMouse, 'y', { duration: 0.75, ease: 'power1' });
+
+  document.addEventListener('mousemove', function(e) {
+    quickToX(e.clientX / width);
+    quickToY(1.0 - e.clientY / height);
+    if (allowRayMouse) {
+      var rect = container.getBoundingClientRect();
+      var mx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      var my = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      rayXTo(mx);
+      rayYTo(my);
+    }
+  });
+
+  // Render loop
+  var time = preset.timeStart;
+  var uTimeVal = 0.1;
+  var reverseUTime = false;
+
+  function render() {
+    time += 0.01;
+    if (reverseUTime) {
+      uTimeVal -= 0.001;
+      if (uTimeVal < 0.1) reverseUTime = false;
+    } else {
+      uTimeVal += 0.001;
+      if (uTimeVal > 0.5) reverseUTime = true;
+    }
+    material.uniforms.uTime.value = uTimeVal;
+    material.uniforms.uRayMouse.value = rayMouse;
+    effect1.uniforms.uMouse.value = uMouse;
+    effect1.uniforms.uTime.value = time * preset.speedMultiplier;
+    renderer.render(scene, camera);
+    composer.render();
+    requestAnimationFrame(render);
+  }
+  // Resize handler
+  window.addEventListener('resize', function() {
+    width = container.offsetWidth;
+    height = container.offsetHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.fov = 2 * Math.atan(height / 2 / positionZ) * 180 / PI;
+    camera.updateProjectionMatrix();
+    composer.setSize(width, height);
+    plane.scale.x = preset.widthMultiplier * width;
+    plane.scale.y = preset.heightMultiplier * (1.25 * height);
+    plane.scale.z = preset.widthMultiplier * width;
+    camera.position.x = preset.position.x * width;
+    camera.position.y = -preset.position.y * height;
+  });
+
+  render();
+  animateIn();
+})();
+</script>
+</body>
+</html>
