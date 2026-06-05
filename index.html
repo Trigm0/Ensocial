@@ -470,7 +470,7 @@
     </section>
 
     <!-- PORTFOLIO — Stacked Folders -->
-    <section id="work" style="position:relative;z-index:2;overflow:visible;padding:clamp(80px,8vw,140px) 0 clamp(120px,10vw,180px);background:#050507;">
+    <section id="work" style="position:relative;z-index:2;overflow:visible;padding:clamp(80px,8vw,140px) 0 clamp(48px,4vw,72px);background:#050507;">
       <style>
         .folder-stack{
           position:relative;width:min(900px,100% - 48px);margin:0 auto;
@@ -483,10 +483,10 @@
           border-radius:20px 20px 20px 20px;
           min-height:420px;
           cursor:pointer;
-          transition:transform 0.6s cubic-bezier(.22,1,.36,1),
-                     box-shadow 0.6s ease,
-                     filter 0.6s ease;
-          will-change:transform;
+          transition:transform 0.8s cubic-bezier(.16,1,.3,1),
+                     box-shadow 0.8s cubic-bezier(.16,1,.3,1),
+                     filter 0.7s ease-out;
+          will-change:transform, filter;
         }
 
         /* Tab notch — sits above the card */
@@ -501,7 +501,7 @@
           color:inherit;
           transform:translateY(-100%);
           pointer-events:auto;
-          transition:opacity 0.4s ease;
+          transition:opacity 0.6s cubic-bezier(.16,1,.3,1);
         }
 
         /* Stagger tab positions so they peek out */
@@ -536,18 +536,19 @@
         .folder-inner{
           padding:clamp(40px,4vw,56px) clamp(32px,4vw,48px);
           opacity:0;pointer-events:none;
-          transition:opacity 0.4s ease 0.1s;
+          transform:translateY(12px);
+          transition:opacity 0.7s cubic-bezier(.16,1,.3,1) 0.15s, transform 0.7s cubic-bezier(.16,1,.3,1) 0.15s;
           min-height:340px;
           display:flex;flex-direction:column;justify-content:center;
         }
-        .folder-card.active .folder-inner{opacity:1;pointer-events:auto}
+        .folder-card.active .folder-inner{opacity:1;pointer-events:auto;transform:translateY(0)}
 
         /* Always-visible preview on non-active cards */
         .folder-preview{
           position:absolute;bottom:0;left:0;right:0;
           padding:28px clamp(32px,4vw,48px);
           opacity:1;
-          transition:opacity 0.3s ease;
+          transition:opacity 0.5s cubic-bezier(.16,1,.3,1);
         }
         .folder-card.active .folder-preview{opacity:0;pointer-events:none}
 
@@ -570,7 +571,7 @@
         .fc-stat-label{font-size:0.82rem;opacity:0.65}
 
         /* Scroll reveal */
-        .folder-stack{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s cubic-bezier(.22,1,.36,1)}
+        .folder-stack{opacity:0;transform:translateY(40px);transition:opacity 1s cubic-bezier(.16,1,.3,1),transform 1s cubic-bezier(.16,1,.3,1)}
         .folder-stack.show{opacity:1;transform:translateY(0)}
 
         /* Mobile: the desktop folder fan needs horizontal room for the tabs, which
@@ -747,10 +748,10 @@
             if(isNaN(target)) return;
             var suffix = el.getAttribute('data-count-suffix') || '';
             var dec = parseInt(el.getAttribute('data-count-decimal') || '0');
-            var dur = 1200, start = performance.now();
+            var dur = 1800, start = performance.now();
             (function step(now){
               var t = Math.min((now - start) / dur, 1);
-              var eased = 1 - Math.pow(1 - t, 3);
+              var eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
               var val = target * eased;
               el.textContent = dec > 0 ? val.toFixed(dec) + suffix : Math.round(val).toLocaleString() + suffix;
               if(t < 1) requestAnimationFrame(step);
@@ -1230,7 +1231,7 @@
               io.unobserve(entry.target);
             }
           });
-        }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+        }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
         revealEls.forEach(el => {
           el.classList.add('reveal');
           io.observe(el);
@@ -1246,7 +1247,9 @@
         var progress = timeline.querySelector('.timeline-progress');
         var track = timeline.querySelector('.timeline-track');
         var items = timeline.querySelectorAll('[data-timeline-item]');
-        var ticking = false;
+        var currentHeight = 0;
+        var targetHeight = 0;
+        var animating = false;
 
         function positionTrack() {
           var firstDot = timeline.querySelector('.timeline-dot');
@@ -1258,6 +1261,19 @@
           track.style.transform = 'translateX(-50%)';
         }
 
+        function lerpProgress() {
+          var diff = targetHeight - currentHeight;
+          if (Math.abs(diff) < 0.1) {
+            currentHeight = targetHeight;
+            progress.style.height = currentHeight + '%';
+            animating = false;
+            return;
+          }
+          currentHeight += diff * 0.12;
+          progress.style.height = currentHeight + '%';
+          requestAnimationFrame(lerpProgress);
+        }
+
         function updateTimeline() {
           var rect = timeline.getBoundingClientRect();
           var timelineTop = rect.top;
@@ -1267,24 +1283,32 @@
 
           var scrolled = (triggerY - timelineTop) / timelineHeight;
           scrolled = Math.max(0, Math.min(1, scrolled));
-          progress.style.height = (scrolled * 100) + '%';
+          targetHeight = scrolled * 100;
+
+          if (!animating) {
+            animating = true;
+            requestAnimationFrame(lerpProgress);
+          }
 
           items.forEach(function(item) {
             var itemRect = item.getBoundingClientRect();
             var itemCenter = itemRect.top + itemRect.height / 2;
-            if (itemCenter < triggerY + 50) {
+            if (itemCenter < triggerY + 30) {
               item.classList.add('is-active');
             } else {
               item.classList.remove('is-active');
             }
           });
-          ticking = false;
         }
 
+        var scrollTicking = false;
         function onScroll() {
-          if (!ticking) {
-            requestAnimationFrame(updateTimeline);
-            ticking = true;
+          if (!scrollTicking) {
+            requestAnimationFrame(function() {
+              updateTimeline();
+              scrollTicking = false;
+            });
+            scrollTicking = true;
           }
         }
 
@@ -1384,11 +1408,11 @@
   function animateCount(el) {
     var target = parseInt(el.getAttribute('data-count-target'));
     var suffix = el.getAttribute('data-count-suffix');
-    var duration = Math.min(1500, Math.max(600, target * 2));
+    var duration = Math.min(2000, Math.max(800, target * 2));
     var start = performance.now();
     function step(now) {
       var progress = Math.min((now - start) / duration, 1);
-      var eased = 1 - Math.pow(1 - progress, 3);
+      var eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
       var current = Math.round(target * eased);
       el.textContent = current.toLocaleString() + suffix;
       if (progress < 1) requestAnimationFrame(step);
@@ -1444,15 +1468,16 @@
     if (!inner || i >= total - 1) return;
 
     gsap.to(inner, {
-      scale: 0.92,
+      scale: 0.93,
       opacity: 0,
-      y: -30,
-      ease: 'none',
+      y: -20,
+      filter: 'blur(4px)',
+      ease: 'power1.inOut',
       scrollTrigger: {
         trigger: panel,
         start: 'top 10vh',
         end: 'bottom 10vh',
-        scrub: 0.5,
+        scrub: 1.2,
       },
     });
   });
@@ -1695,17 +1720,17 @@
 
   // Animate in (like KOTA)
   function animateIn() {
-    gsap.to(material.uniforms.uPow, { value: 1.5, duration: 2, delay: 0.3, ease: 'power4.out' });
-    gsap.to(material.uniforms.uAlpha, { value: 1, duration: 2, delay: 0.3, ease: 'power4.out' });
+    gsap.to(material.uniforms.uPow, { value: 1.5, duration: 3, delay: 0.2, ease: 'power3.out' });
+    gsap.to(material.uniforms.uAlpha, { value: 1, duration: 3.5, delay: 0.2, ease: 'power2.out' });
     allowRayMouse = false;
-    gsap.to(rayMouse, { x: -0.4, y: -0.4, duration: 2, ease: 'power1.out', onComplete: function() { allowRayMouse = true; } });
+    gsap.to(rayMouse, { x: -0.4, y: -0.4, duration: 2.8, ease: 'power2.out', onComplete: function() { allowRayMouse = true; } });
   }
 
   // Mouse follow
-  var quickToX = gsap.quickTo(uMouse, 'x', { duration: 0.5, ease: 'power1' });
-  var quickToY = gsap.quickTo(uMouse, 'y', { duration: 0.5, ease: 'power1' });
-  var rayXTo = gsap.quickTo(rayMouse, 'x', { duration: 0.75, ease: 'power1' });
-  var rayYTo = gsap.quickTo(rayMouse, 'y', { duration: 0.75, ease: 'power1' });
+  var quickToX = gsap.quickTo(uMouse, 'x', { duration: 0.8, ease: 'power2' });
+  var quickToY = gsap.quickTo(uMouse, 'y', { duration: 0.8, ease: 'power2' });
+  var rayXTo = gsap.quickTo(rayMouse, 'x', { duration: 1.0, ease: 'power2' });
+  var rayYTo = gsap.quickTo(rayMouse, 'y', { duration: 1.0, ease: 'power2' });
 
   document.addEventListener('mousemove', function(e) {
     quickToX(e.clientX / width);
