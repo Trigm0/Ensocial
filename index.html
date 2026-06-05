@@ -573,22 +573,61 @@
         .folder-stack{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s cubic-bezier(.22,1,.36,1)}
         .folder-stack.show{opacity:1;transform:translateY(0)}
 
+        /* Mobile: the desktop folder fan needs horizontal room for the tabs, which
+           doesn't exist on a phone. Instead, render the folders as a sticky
+           stacking-scroll deck — each card pins near the top and the next slides up
+           and stacks over it, while the covered card scales down + dims (via JS). */
         @media(max-width:700px){
-          .folder-stack{height:480px}
-          .folder-card{min-height:380px;border-radius:16px}
-          .folder-card::before{height:36px;padding:0 16px;font-size:0.6rem;border-radius:10px 10px 0 0}
-          .folder-card:nth-child(1)::before{left:16px;min-width:90px}
-          .folder-card:nth-child(2)::before{left:120px;min-width:110px}
-          .folder-card:nth-child(3)::before{left:245px;min-width:110px}
-          .folder-inner{padding:28px 24px}
-          .folder-preview{padding:20px 24px}
-          .fc-stats{gap:6px 28px}
-          .fc-stat-num{font-size:1.8rem}
-        }
-        @media(max-width:480px){
-          .folder-card:nth-child(1)::before{left:12px;min-width:70px}
-          .folder-card:nth-child(2)::before{left:92px;min-width:90px}
-          .folder-card:nth-child(3)::before{left:194px;min-width:90px}
+          .folder-stack{height:auto;perspective:none;display:block}
+          .folder-card,
+          .folder-stack.has-active .folder-card:not(.active),
+          .folder-card.active ~ .folder-card:not(.active){
+            position:sticky;
+            top:80px;
+            /* reset the desktop absolute-positioning anchors so cards flow normally */
+            left:auto;right:auto;bottom:auto;
+            width:100%;
+            min-height:0 !important;
+            /* runway = scroll distance between each card sticking */
+            margin:0 auto 40vh;
+            border-radius:18px;
+            transform-origin:center top;
+            /* JS drives the live scale/brightness; clear the desktop fan transforms */
+            transform:scale(1);
+            filter:none;
+            cursor:default;
+            box-shadow:0 10px 40px rgba(0,0,0,0.45);
+            transition:transform 0.2s linear, filter 0.2s linear;
+            will-change:transform, filter;
+          }
+          /* Stagger the pin offset so earlier cards peek above later ones, and
+             override the desktop fan z-index so later cards stack ON TOP (DOM order). */
+          .folder-card:nth-child(1){top:64px;z-index:1 !important}
+          .folder-card:nth-child(2){top:84px;z-index:2 !important}
+          .folder-card:nth-child(3){top:104px;z-index:3 !important}
+          .folder-card:last-child{margin-bottom:0 !important}
+          /* Tab notch becomes a normal label sitting above its card */
+          .folder-card::before{
+            position:static;
+            transform:none;
+            height:auto;
+            padding:10px 16px;
+            min-width:0 !important;
+            left:auto !important;
+            font-size:0.62rem;
+            border-radius:12px 12px 0 0;
+            width:max-content;
+          }
+          /* Full content always visible; collapsed preview hidden. Compact the
+             content so each card is short enough to be seen on its own before the
+             next stacks over it. */
+          .folder-inner{opacity:1 !important;pointer-events:auto !important;padding:20px;min-height:0 !important;justify-content:flex-start}
+          .folder-preview{display:none !important}
+          .fc-title{font-size:1.4rem;margin:0 0 10px}
+          .fc-body{font-size:0.9rem;line-height:1.5;margin:0 0 16px}
+          .fc-stats{gap:4px 24px;margin-bottom:12px}
+          .fc-stat-num{font-size:1.5rem}
+          .fc-stat-label{font-size:0.75rem}
         }
       </style>
 
@@ -723,6 +762,46 @@
         stack.classList.add('has-active');
         runCounters(stack.querySelector('.folder-card.active'));
 
+        // On mobile the folders render as a sticky stacking-scroll deck. Every
+        // card's counters need to run (not just the active one), and we scale/dim
+        // each card as the next one stacks over it.
+        var isMobile = window.matchMedia('(max-width:700px)').matches;
+        if(isMobile){
+          cards.forEach(function(c){ runCounters(c); });
+
+          var cardArr = Array.prototype.slice.call(cards);
+          var ticking = false;
+          function updateStack(){
+            ticking = false;
+            var ramp = window.innerHeight * 0.4; // distance over which the cover animates
+            for(var i = 0; i < cardArr.length - 1; i++){
+              var cur = cardArr[i];
+              var next = cardArr[i + 1];
+              var curBottom = cur.getBoundingClientRect().bottom;
+              var nextTop = next.getBoundingClientRect().top;
+              // gap shrinks from `ramp` → 0 as the next card rises toward this one's
+              // bottom; prog 0 = fully open, 1 = next card has reached and covers it.
+              var gap = nextTop - curBottom;
+              var prog = Math.min(Math.max(1 - gap / ramp, 0), 1);
+              var scale = 1 - prog * 0.06;
+              // Light-background cards (e.g. lavender #02) wash out and lose their
+              // dark text under a brightness dim — darken those instead of brightening.
+              var light = cur.getAttribute('data-tab') === '02 — Conversion';
+              var filt = light
+                ? 'brightness(' + (1 - prog * 0.12).toFixed(3) + ')'
+                : 'brightness(' + (1 - prog * 0.30).toFixed(3) + ')';
+              // Use setProperty with 'important' so these beat the desktop
+              // `filter:brightness(0.55) !important` rule on inactive cards.
+              cur.style.setProperty('transform', 'scale(' + scale.toFixed(3) + ')', 'important');
+              cur.style.setProperty('filter', filt, 'important');
+            }
+          }
+          window.addEventListener('scroll', function(){
+            if(!ticking){ ticking = true; requestAnimationFrame(updateStack); }
+          }, {passive:true});
+          updateStack();
+        }
+
         // Scroll reveal
         var obs = new IntersectionObserver(function(entries){
           entries.forEach(function(e){
@@ -789,17 +868,17 @@
           <p class=”lead”>Tell us what you’re selling and how many leads you need. We’ll reply with a deployment plan and a clear timeline.</p>
 
           <div class="contact-points" aria-label="Direct contact options">
-            <a class="contact-chip" href="tel:+10000000000">
+            <a class="contact-chip" href="tel:+919137706550">
               <span class="micro-label">Call</span>
-              <span class="body-muted">+1 (000) 000‑0000</span>
+              <span class="body-muted">+91 91 3770 6550</span>
             </a>
-            <a class="contact-chip" href="https://wa.me/10000000000" target="_blank" rel="noopener">
+            <a class="contact-chip" href="https://wa.me/919137706550" target="_blank" rel="noopener">
               <span class="micro-label">WhatsApp</span>
               <span class="body-muted">Chat with our team</span>
             </a>
-            <a class="contact-chip" href="mailto:hello@ensocial.example">
+            <a class="contact-chip" href="mailto:hello@ensocial.in">
               <span class="micro-label">Email</span>
-              <span class="body-muted">hello@ensocial.example</span>
+              <span class="body-muted">hello@ensocial.in</span>
             </a>
           </div>
         </div>
@@ -851,10 +930,10 @@
 
   <!-- Desktop FABs -->
   <aside class="fab-stack" aria-label="Quick actions">
-    <a class="fab" href="tel:+10000000000" aria-label="Call Ensocial">
+    <a class="fab" href="tel:+919137706550" aria-label="Call Ensocial">
       <span aria-hidden="true">☎</span>
     </a>
-    <a class="fab" href="https://wa.me/10000000000" target="_blank" rel="noopener" aria-label="WhatsApp Ensocial">
+    <a class="fab" href="https://wa.me/919137706550" target="_blank" rel="noopener" aria-label="WhatsApp Ensocial">
       <span aria-hidden="true">WA</span>
     </a>
     <a class="fab" href="#contact" aria-label="Enquire with Ensocial">
@@ -864,11 +943,11 @@
 
   <!-- Mobile action bar -->
   <nav class="mobile-bar" aria-label="Mobile quick actions">
-    <a class="mobile-action" href="tel:+10000000000">
+    <a class="mobile-action" href="tel:+919137706550">
       <span class="mobile-action-title">Call</span>
       <span class="mobile-action-sub">Now</span>
     </a>
-    <a class="mobile-action" href="https://wa.me/10000000000" target="_blank" rel="noopener">
+    <a class="mobile-action" href="https://wa.me/919137706550" target="_blank" rel="noopener">
       <span class="mobile-action-title">WhatsApp</span>
       <span class="mobile-action-sub">Chat</span>
     </a>
@@ -901,9 +980,9 @@
         <section class="footer-col" aria-label="Contact details">
           <h3 class="footer-title">Contact</h3>
           <ul class="footer-list">
-            <li><a href="mailto:hello@ensocial.example">hello@ensocial.example</a></li>
-            <li><a href="tel:+10000000000">+1 (000) 000‑0000</a></li>
-            <li><a href="https://wa.me/10000000000" target="_blank" rel="noopener">WhatsApp</a></li>
+            <li><a href="mailto:hello@ensocial.in">hello@ensocial.in</a></li>
+            <li><a href="tel:+919137706550">+91 91 3770 6550</a></li>
+            <li><a href="https://wa.me/919137706550" target="_blank" rel="noopener">WhatsApp</a></li>
           </ul>
         </section>
 
@@ -1142,7 +1221,7 @@
       });
 
       // Reveal on scroll
-      const revealEls = document.querySelectorAll('.section, .card, .case, .pricing-card, .process-card, .media-frame');
+      const revealEls = document.querySelectorAll('.section:not(.hero), .card, .case, .pricing-card, .process-card, .media-frame');
       if (!prefersReduced && 'IntersectionObserver' in window) {
         const io = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
@@ -1262,12 +1341,15 @@
 
 /* === MICRO: Word Flip === */
 (function() {
+  // On mobile, keep the first word static — no flipping (prevents overlap).
+  var noFlip = window.matchMedia('(max-width:699px)').matches;
   var wraps = document.querySelectorAll('.word-flip-wrap');
   wraps.forEach(function(wrap) {
     var words = wrap.querySelectorAll('.wf-word');
     if (words.length < 2) return;
     var idx = 0;
     words[0].classList.add('wf-active');
+    if (noFlip) return;
     setInterval(function() {
       var prev = words[idx];
       idx = (idx + 1) % words.length;

@@ -437,6 +437,12 @@ button, input, select, textarea{ font:inherit; color:inherit; }
 .hero{
   padding-top: clamp(72px, 9vw, 132px);
   overflow:hidden;
+  z-index:1;
+}
+.hero .hero-copy,
+.hero .hero-actions{
+  opacity:1 !important;
+  transform:none !important;
 }
 
 .hero-bg{
@@ -806,6 +812,11 @@ button, input, select, textarea{ font:inherit; color:inherit; }
   .media-frame{ width: 420px; }
 }
 
+/* Hide the hero eyebrow pills on mobile only (kept on desktop) */
+@media (max-width: 699px){
+  .hero .eyebrow{ display: none; }
+}
+
 /* Two column layout */
 .two-col{
   display:grid;
@@ -1114,6 +1125,20 @@ button, input, select, textarea{ font:inherit; color:inherit; }
   .card-columns{
     grid-template-columns: 1.4fr 0.6fr;
     align-items: start;
+  }
+}
+
+/* Mobile: drop the sticky card-stacking and render a plain vertical list.
+   The desktop sticky + 30vh gaps create tall empty bands on small screens. */
+@media (max-width: 699px){
+  .card-stack-panel{
+    position: static;
+    top: auto;
+    margin-bottom: 20px;
+  }
+  .card-k{
+    padding: 28px 24px;
+    border-radius: 1.25rem;
   }
 }
 
@@ -1670,6 +1695,19 @@ main{ padding-bottom: 86px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .word-flip-wrap .wf-word { transition: none; }
+}
+/* Mobile: no word flip — show the first word static, hide the rest. */
+@media (max-width: 699px) {
+  .word-flip-wrap .wf-word {
+    display: none;
+    position: relative;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .word-flip-wrap .wf-word:first-child {
+    display: inline-block;
+  }
 }
 
 /* === MICRO: Smooth Section Headers === */
